@@ -14,6 +14,7 @@ Press `LShift` and click on item you want to move. The selected item will be mov
 ## Roadmap
 
 - [ ] Support for chests
+- [ ] Fix equipment slot issues
 
 ## Feedback
 
