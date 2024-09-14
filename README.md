@@ -4,7 +4,7 @@ QOL Inventory mod for Core Keeper.
 
 This mod provides a better experience when moving items from hotbar to inventory and  vice versa.
 
-![how it works](https://i.imgur.com/Nv6er5X.gif)
+<img src="https://i.imgur.com/BK5eDXM.gif" width="66%" height="66%" />
 
 ## Usage
 
