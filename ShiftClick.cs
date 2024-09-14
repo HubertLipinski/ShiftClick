@@ -1,4 +1,5 @@
 using PugMod;
+using System;
 using UnityEngine;
 
 public class ShiftClick : IMod
@@ -10,7 +11,7 @@ public class ShiftClick : IMod
         UnityEngine.Debug.Log("[ShiftClick] initialized!");
     }
 
-    public void ModObjectLoaded(Object obj) {}
+    public void ModObjectLoaded(UnityEngine.Object obj){}
 
     public void Shutdown() {}
 
@@ -23,36 +24,109 @@ public class ShiftClick : IMod
 
         if (Input.GetKey(KeyCode.LeftShift) && Input.GetKeyDown(KeyCode.Mouse0))
         {
-            InventorySlotUI inventorySlotUI = Manager.ui.currentSelectedUIElement as InventorySlotUI;
-            int index = inventorySlotUI == null ? -1 : inventorySlotUI.inventorySlotIndex;
-
-            int freeSpace = GetEmptyInventoryIndex(player, index);
-
-            if (freeSpace == -1) 
-                return;
-
-            InventoryHandler inventoryHandler = player.playerInventoryHandler;
-            inventoryHandler.Swap(player, index, inventoryHandler, freeSpace);
+            HandleInventoryChange(player);
         } 
     }
 
-    private int GetEmptyInventoryIndex(PlayerController player, int itemIndex)
+    private void HandleInventoryChange(PlayerController player) 
     {
-        if (itemIndex == -1)
-            return -1;
+        InventorySlotUI inventorySlotUI = Manager.ui.currentSelectedUIElement as InventorySlotUI;
 
-        int inventorySize = player.playerInventoryHandler.size;
+        int index = inventorySlotUI == null ? -1 : inventorySlotUI.inventorySlotIndex;
 
-        int index = itemIndex < 10 ? 10 : 0; // skip hotbar indexes
+        InventoryHandler inventoryHandler = player.playerInventoryHandler;
+        InventoryHandler chestInventoryHandler = player.activeInventoryHandler;
 
-        for (int i = index; i < inventorySize; i++)
+        ObjectDataCD itemData = inventoryHandler.GetObjectData(index);
+        ObjectInfo objectInfo = PugDatabase.GetObjectInfo(itemData.objectID);
+
+        if (objectInfo != null)
+            return;
+
+        if (inventorySlotUI.slotType == ItemSlotsUIType.ChestSlot)
         {
-            ObjectDataCD ObjData = player.playerInventoryHandler.GetObjectData(i);
+            ObjectDataCD itemDataChest = chestInventoryHandler.GetObjectData(index);
+            ObjectInfo objectInfoChest = PugDatabase.GetObjectInfo(itemDataChest.objectID);
 
-            if (ObjData.objectID == 0) 
+            int emptySlot = GetEmptyInventoryIndex(inventoryHandler, objectInfoChest, -1);
+
+            if (emptySlot == -1)
+                return;
+
+            chestInventoryHandler.TryMoveTo(player, index, inventoryHandler, emptySlot);
+
+            return;
+        }
+
+        if (inventorySlotUI.slotType == ItemSlotsUIType.PlayerInventorySlot)
+        {
+            if (Manager.ui.isChestInventoryUIShowing)
+            {
+                int emptySlot = GetIndexOfItemInInventory(chestInventoryHandler, objectInfo.isStackable ? objectInfo.objectID : ObjectID.None);
+
+                if (emptySlot == -1)
+                    return;
+
+                inventoryHandler.TryMoveTo(player, index, chestInventoryHandler, emptySlot);
+            }
+            else
+            {
+                int freeSpaceStack = GetEmptyInventoryIndex(inventoryHandler, objectInfo, index);
+
+                if (freeSpaceStack == -1)
+                    return;
+
+                inventoryHandler.TryMoveTo(player, index, inventoryHandler, freeSpaceStack);
+            }
+
+        }
+    }
+
+    private int GetEmptyInventoryIndex(InventoryHandler inventoryHandler, ObjectInfo objectInfo, int startingIndex = 0)
+    {
+        bool isItemStackable = objectInfo.isStackable;
+        ObjectID objectID = isItemStackable ? objectInfo.objectID : ObjectID.None;
+
+        int index = startingIndex != -1 && startingIndex < 10 ? 10 : 0;
+
+        var firstFound = GetIndexOfItemInInventory(inventoryHandler, objectID, index);
+
+        if (!isItemStackable) 
+            return firstFound;
+
+        var nextItemKind = GetIndexOfItemInInventory(inventoryHandler, objectID, 0, firstFound);
+        var firstStackableSlot = FindFirstStackbleSlot(startingIndex, firstFound, nextItemKind);
+
+        return firstStackableSlot ?? GetIndexOfItemInInventory(inventoryHandler, ObjectID.None, index);
+    }
+
+    private int GetIndexOfItemInInventory(InventoryHandler inventoryHandler, ObjectID objectID, int index = 0, int skipIndex = -1)
+    {
+        for (int i = index; i < inventoryHandler.size; i++)
+        {
+            ObjectDataCD ObjData = inventoryHandler.GetObjectData(i);
+
+            if (ObjData.objectID == objectID && i != skipIndex)
                 return i;
         }
 
         return -1;
+    }
+
+    private int? FindFirstStackbleSlot(int initialValue, int first, int second)
+    {
+        // next item's stack
+        if (first == initialValue && second != -1)
+            return second;
+
+        // previous item's stack
+        if (second == initialValue && first != -1)
+            return first;
+
+        // egde case - when inventory is filled with stackable items of the same kind
+        if (first != second && first != initialValue && first != -1)
+            return first;
+
+        return null;
     }
 }
