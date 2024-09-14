@@ -1,23 +1,37 @@
 using PugMod;
-using System;
+using System.Linq;
 using UnityEngine;
 
 public class ShiftClick : IMod
 {
-    public void EarlyInit() {}
+
+    private ObjectType[] ignoredTypes = new ObjectType[]
+    {
+        ObjectType.Helm,
+        ObjectType.BreastArmor,
+        ObjectType.PantsArmor,
+        ObjectType.Necklace,
+        ObjectType.Ring,
+        ObjectType.Bag,
+        ObjectType.Lantern,
+        ObjectType.Offhand,
+        ObjectType.Pet,
+    };
+
+    public void EarlyInit() { }
 
     public void Init()
     {
-        UnityEngine.Debug.Log("[ShiftClick] initialized!");
+        Debug.Log("[ShiftClick] initialized!");
     }
 
-    public void ModObjectLoaded(UnityEngine.Object obj){}
+    public void ModObjectLoaded(Object obj) { }
 
-    public void Shutdown() {}
+    public void Shutdown() { }
 
     public void Update()
     {
-        if (API.Server.World == null || !Manager.ui.isPlayerInventoryShowing) 
+        if (API.Server.World == null || !Manager.ui.isPlayerInventoryShowing)
             return;
 
         PlayerController player = Manager.main.player;
@@ -25,10 +39,10 @@ public class ShiftClick : IMod
         if (Input.GetKey(KeyCode.LeftShift) && Input.GetKeyDown(KeyCode.Mouse0))
         {
             HandleInventoryChange(player);
-        } 
+        }
     }
 
-    private void HandleInventoryChange(PlayerController player) 
+    private void HandleInventoryChange(PlayerController player)
     {
         InventorySlotUI inventorySlotUI = Manager.ui.currentSelectedUIElement as InventorySlotUI;
 
@@ -40,7 +54,8 @@ public class ShiftClick : IMod
         ObjectDataCD itemData = inventoryHandler.GetObjectData(index);
         ObjectInfo objectInfo = PugDatabase.GetObjectInfo(itemData.objectID);
 
-        if (objectInfo != null)
+        // clicked on non inventory object
+        if (itemData.objectID == ObjectID.None || index == -1)
             return;
 
         if (inventorySlotUI.slotType == ItemSlotsUIType.ChestSlot)
@@ -71,14 +86,17 @@ public class ShiftClick : IMod
             }
             else
             {
-                int freeSpaceStack = GetEmptyInventoryIndex(inventoryHandler, objectInfo, index);
-
-                if (freeSpaceStack == -1)
+                // ignore inventory items - default behavior is expected
+                if (ignoredTypes.Contains(objectInfo.objectType))
                     return;
 
-                inventoryHandler.TryMoveTo(player, index, inventoryHandler, freeSpaceStack);
-            }
+                int inventorySlot = GetEmptyInventoryIndex(inventoryHandler, objectInfo, index);
 
+                if (inventorySlot == -1)
+                    return;
+
+                inventoryHandler.TryMoveTo(player, index, inventoryHandler, inventorySlot);
+            }
         }
     }
 
@@ -91,7 +109,7 @@ public class ShiftClick : IMod
 
         var firstFound = GetIndexOfItemInInventory(inventoryHandler, objectID, index);
 
-        if (!isItemStackable) 
+        if (!isItemStackable)
             return firstFound;
 
         var nextItemKind = GetIndexOfItemInInventory(inventoryHandler, objectID, 0, firstFound);
@@ -115,11 +133,9 @@ public class ShiftClick : IMod
 
     private int? FindFirstStackbleSlot(int initialValue, int first, int second)
     {
-        // next item's stack
         if (first == initialValue && second != -1)
             return second;
 
-        // previous item's stack
         if (second == initialValue && first != -1)
             return first;
 
