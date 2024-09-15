@@ -12,6 +12,6 @@ Press `LShift` and click on item you want to move. The selected item will be mov
 
 ## Feedback
 
-If you have any feedback, feel free to create an [issue.](https://github.com/HubertLipinski/ShiftClick/issues/new/choose)
+If you have any feedback or You have found a bug, feel free to create an [issue.](https://github.com/HubertLipinski/ShiftClick/issues/new/choose)
 
 
