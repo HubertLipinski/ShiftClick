@@ -8,10 +8,10 @@ This mod provides a better experience when moving items from hotbar, inventory a
 
 ## Usage
 
-> **As from version 1.1.0 Chest inventory is now supported!**
-
 Press `LShift` and click on item you want to move. The selected item will be moved to next available inventory/hotbar or chest slot.
 
 ## Feedback
 
-If you have any feedback, feel free to create an [issue.](https://github.com/HubertLipinski/ShiftClick/issues/new)
+If you have any feedback, feel free to create an [issue.](https://github.com/HubertLipinski/ShiftClick/issues/new/choose)
+
+
