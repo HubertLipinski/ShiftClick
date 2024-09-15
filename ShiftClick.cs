@@ -31,7 +31,7 @@ public class ShiftClick : IMod
 
     public void Update()
     {
-        if (API.Server.World == null || !Manager.ui.isPlayerInventoryShowing)
+        if (!Manager.ui.isPlayerInventoryShowing)
             return;
 
         PlayerController player = Manager.main.player;
