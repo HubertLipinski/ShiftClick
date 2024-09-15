@@ -1,11 +1,10 @@
 using PugMod;
-using System.Linq;
 using UnityEngine;
+using System.Linq;
 
 public class ShiftClick : IMod
 {
-
-    private ObjectType[] ignoredTypes = new ObjectType[]
+    private readonly ObjectType[] _ignoredItemTypes =
     {
         ObjectType.Helm,
         ObjectType.BreastArmor,
@@ -18,20 +17,26 @@ public class ShiftClick : IMod
         ObjectType.Pet,
     };
 
-    public void EarlyInit() { }
+    public void EarlyInit()
+    {
+    }
 
     public void Init()
     {
         Debug.Log("[ShiftClick] initialized!");
     }
 
-    public void ModObjectLoaded(Object obj) { }
+    public void ModObjectLoaded(Object obj)
+    {
+    }
 
-    public void Shutdown() { }
+    public void Shutdown()
+    {
+    }
 
     public void Update()
     {
-        if (!Manager.ui.isPlayerInventoryShowing)
+        if (!Manager.ui.isPlayerInventoryShowing || IsAnyIgnoredUIOpen())
             return;
 
         PlayerController player = Manager.main.player;
@@ -40,6 +45,21 @@ public class ShiftClick : IMod
         {
             HandleInventoryChange(player);
         }
+    }
+
+    private static bool IsAnyIgnoredUIOpen()
+    {
+        bool[] ignoredUIElementsAreOpened =
+        {
+            Manager.ui.cookingCraftingUI.isShowing,
+            Manager.ui.processResourcesCraftingUI.isShowing,
+            Manager.ui.isSalvageAndRepairUIShowing,
+            Manager.ui.bossStatueUI.isShowing,
+            Manager.ui.isBuyUIShowing,
+            Manager.ui.isSellUIShowing,
+        };
+
+        return ignoredUIElementsAreOpened.Any(element => element);
     }
 
     private void HandleInventoryChange(PlayerController player)
@@ -55,7 +75,7 @@ public class ShiftClick : IMod
         ObjectInfo objectInfo = PugDatabase.GetObjectInfo(itemData.objectID);
 
         // clicked on non inventory object
-        if (itemData.objectID == ObjectID.None || index == -1)
+        if (itemData.objectID == ObjectID.None || index == -1 || inventorySlotUI == null)
             return;
 
         if (inventorySlotUI.slotType == ItemSlotsUIType.ChestSlot)
@@ -64,43 +84,31 @@ public class ShiftClick : IMod
             ObjectInfo objectInfoChest = PugDatabase.GetObjectInfo(itemDataChest.objectID);
 
             int emptySlot = GetEmptyInventoryIndex(inventoryHandler, objectInfoChest, -1);
-
-            if (emptySlot == -1)
-                return;
-
-            chestInventoryHandler.TryMoveTo(player, index, inventoryHandler, emptySlot);
+            MoveInventoryItem(player, chestInventoryHandler, inventoryHandler, index, emptySlot);
 
             return;
         }
 
-        if (inventorySlotUI.slotType == ItemSlotsUIType.PlayerInventorySlot)
+        if (inventorySlotUI.slotType != ItemSlotsUIType.PlayerInventorySlot)
+            return;
+
+        if (Manager.ui.isChestInventoryUIShowing)
         {
-            if (Manager.ui.isChestInventoryUIShowing)
-            {
-                int emptySlot = GetIndexOfItemInInventory(chestInventoryHandler, objectInfo.isStackable ? objectInfo.objectID : ObjectID.None);
+            int emptySlot = GetIndexOfItemInInventory(chestInventoryHandler, objectInfo.isStackable ? objectInfo.objectID : ObjectID.None);
+            MoveInventoryItem(player, inventoryHandler, chestInventoryHandler, index, emptySlot);
 
-                if (emptySlot == -1)
-                    return;
-
-                inventoryHandler.TryMoveTo(player, index, chestInventoryHandler, emptySlot);
-            }
-            else
-            {
-                // ignore inventory items - default behavior is expected
-                if (ignoredTypes.Contains(objectInfo.objectType))
-                    return;
-
-                int inventorySlot = GetEmptyInventoryIndex(inventoryHandler, objectInfo, index);
-
-                if (inventorySlot == -1)
-                    return;
-
-                inventoryHandler.TryMoveTo(player, index, inventoryHandler, inventorySlot);
-            }
+            return;
         }
+
+        // default game behavior is expected
+        if (_ignoredItemTypes.Contains(objectInfo.objectType))
+            return;
+
+        int inventorySlot = GetEmptyInventoryIndex(inventoryHandler, objectInfo, index);
+        MoveInventoryItem(player, inventoryHandler, inventoryHandler, index, inventorySlot);
     }
 
-    private int GetEmptyInventoryIndex(InventoryHandler inventoryHandler, ObjectInfo objectInfo, int startingIndex = 0)
+    private static int GetEmptyInventoryIndex(InventoryHandler inventoryHandler, ObjectInfo objectInfo, int startingIndex = 0)
     {
         bool isItemStackable = objectInfo.isStackable;
         ObjectID objectID = isItemStackable ? objectInfo.objectID : ObjectID.None;
@@ -118,20 +126,20 @@ public class ShiftClick : IMod
         return firstStackableSlot ?? GetIndexOfItemInInventory(inventoryHandler, ObjectID.None, index);
     }
 
-    private int GetIndexOfItemInInventory(InventoryHandler inventoryHandler, ObjectID objectID, int index = 0, int skipIndex = -1)
+    private static int GetIndexOfItemInInventory(InventoryHandler inventoryHandler, ObjectID objectID, int index = 0, int skipIndex = -1)
     {
         for (int i = index; i < inventoryHandler.size; i++)
         {
-            ObjectDataCD ObjData = inventoryHandler.GetObjectData(i);
+            ObjectDataCD objData = inventoryHandler.GetObjectData(i);
 
-            if (ObjData.objectID == objectID && i != skipIndex)
+            if (objData.objectID == objectID && i != skipIndex)
                 return i;
         }
 
         return -1;
     }
 
-    private int? FindFirstStackbleSlot(int initialValue, int first, int second)
+    private static int? FindFirstStackbleSlot(int initialValue, int first, int second)
     {
         if (first == initialValue && second != -1)
             return second;
@@ -139,10 +147,18 @@ public class ShiftClick : IMod
         if (second == initialValue && first != -1)
             return first;
 
-        // egde case - when inventory is filled with stackable items of the same kind
+        // edge case - when inventory is filled with stackable items of the same kind
         if (first != second && first != initialValue && first != -1)
             return first;
 
         return null;
+    }
+
+    private static void MoveInventoryItem(PlayerController player, InventoryHandler primaryInventoryHandler, InventoryHandler secondaryInventoryHandler, int index, int emptySlot)
+    {
+        if (emptySlot == -1)
+            return;
+
+        primaryInventoryHandler.TryMoveTo(player, index, secondaryInventoryHandler, emptySlot);
     }
 }
