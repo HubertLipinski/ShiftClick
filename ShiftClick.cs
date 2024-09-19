@@ -1,9 +1,19 @@
-using PugMod;
-using UnityEngine;
 using System.Linq;
+using CoreLib;
+using CoreLib.RewiredExtension;
+using PugMod;
+using Rewired;
+using UnityEngine;
 
 public class ShiftClick : IMod
 {
+    private const string Version = "1.2.0";
+    private const string Name = "ShiftClick";
+    private const string Author = "Trolxu";
+
+    private const string KeyBindName = "ShiftClickModifier";
+    private const string KeyBindDescription = "[ShitClick] Key modifier";
+
     private readonly ObjectType[] _ignoredItemTypes =
     {
         ObjectType.Helm,
@@ -19,11 +29,15 @@ public class ShiftClick : IMod
 
     public void EarlyInit()
     {
+        Debug.Log($"[{Name}]: Version: {Version}, Author: {Author}");
+        CoreLibMod.LoadModules(typeof(RewiredExtensionModule));
+        RewiredExtensionModule.AddKeybind(KeyBindName, KeyBindDescription, KeyboardKeyCode.LeftShift);
+        RewiredExtensionModule.SetDefaultControllerBinding(KeyBindName, GamepadTemplate.elementId_rightTrigger);
     }
 
     public void Init()
     {
-        Debug.Log("[ShiftClick] initialized!");
+        Debug.Log($"[{Name}]: initialized!");
     }
 
     public void ModObjectLoaded(Object obj)
@@ -40,8 +54,12 @@ public class ShiftClick : IMod
             return;
 
         PlayerController player = Manager.main.player;
+        PlayerInput input = Manager.input.singleplayerInputModule;
 
-        if (Input.GetKey(KeyCode.LeftShift) && Input.GetKeyDown(KeyCode.Mouse0))
+        bool modifierKeyHeldDown = input.IsButtonCurrentlyDown((PlayerInput.InputType)RewiredExtensionModule.GetKeybindId(KeyBindName));
+        bool interactedWithUI = input.rewiredPlayer.GetButtonDown((int)PlayerInput.InputType.UI_INTERACT);
+
+        if (modifierKeyHeldDown && interactedWithUI)
         {
             HandleInventoryChange(player);
         }
