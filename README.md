@@ -1,3 +1,6 @@
+> [!NOTE]  
+> Mod is no longer maintained due to the fact that the developers of the game have included the features of this mod in the base game
+
 # ShiftClick
 
 QOL Inventory mod for Core Keeper. 
